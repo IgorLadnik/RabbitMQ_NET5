@@ -31,27 +31,25 @@ namespace RabbiMQHelper
 
             _action = action;
             _consumer = new EventingBasicConsumer(_channel);
-            _consumer.Received += Consumer_Received;
+            _consumer.Received += (sender, ea) =>
+                {
+                    try
+                    {
+                        _action(ea.Body);
+
+                        var props = ea.BasicProperties;
+                        var replyProps = _channel.CreateBasicProperties();
+                        replyProps.CorrelationId = props.CorrelationId;
+                        _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                    }
+                    catch (Exception e)
+                    {
+                    }
+                };
             _channel.BasicConsume(queue: _options.Queue,
                                   autoAck: _options.AutoAck,
                                   consumer: _consumer);
             return this;
-        }
-
-        private void Consumer_Received(object sender, BasicDeliverEventArgs ea)
-        {
-            try
-            {
-                _action(ea.Body);
-
-                var props = ea.BasicProperties;
-                var replyProps = _channel.CreateBasicProperties();
-                replyProps.CorrelationId = props.CorrelationId;
-                _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
-            }
-            catch (Exception e) 
-            {
-            }
         }
     }
 }
