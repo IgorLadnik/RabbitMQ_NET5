@@ -21,7 +21,7 @@ namespace RabbiMQHelper
         {
         }
 
-        public void Subscribe(Action<ReadOnlyMemory<byte>> action) 
+        public RabbitMqSubscriber Subscribe(Action<ReadOnlyMemory<byte>> action) 
         {
             if (action == null)
                 throw new Exception("Null Action");
@@ -32,6 +32,7 @@ namespace RabbiMQHelper
                                  autoAck: Options.AutoAck,
                                  consumer: _consumer);
             _consumer.Received += Consumer_Received;
+            return this;
         }
 
         private void Consumer_Received(object sender, BasicDeliverEventArgs ea)
