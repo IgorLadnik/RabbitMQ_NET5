@@ -20,10 +20,10 @@ namespace RabbiMQHelper
 
     public class RabbitMqBase : IDisposable
     {
+        protected readonly RabbitMqOptions _options;
         protected IModel _channel;
-        protected RabbitMqOptions _options;
 
-        private ConnectionFactory _factory;
+        private readonly ConnectionFactory _factory;
         private IConnection _connection;
 
         protected RabbitMqBase(ConnectionFactory factory, RabbitMqOptions options)
