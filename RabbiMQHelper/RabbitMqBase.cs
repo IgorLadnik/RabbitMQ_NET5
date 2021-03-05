@@ -20,16 +20,16 @@ namespace RabbiMQHelper
 
     public class RabbitMqBase : IDisposable
     {
-        protected RabbitMqOptions Options { get; private set; }
-        protected IModel Channel { get; private set; }
-        protected IConnection Connection { get; private set; }
+        protected IModel _channel;
+        protected RabbitMqOptions _options;
 
-        protected ConnectionFactory Factory { get; private set; }
+        private ConnectionFactory _factory;
+        private IConnection _connection;
 
         protected RabbitMqBase(ConnectionFactory factory, RabbitMqOptions options)
         {
-            Factory = factory;
-            Options = options;
+            _factory = factory;
+            _options = options;
         }
 
         protected Task<RabbitMqBase> Connect() =>
@@ -37,28 +37,28 @@ namespace RabbiMQHelper
             {
                 try
                 {
-                    Connection = Factory.CreateConnection();
-                    Channel = Connection.CreateModel();
+                    _connection = _factory.CreateConnection();
+                    _channel = _connection.CreateModel();
 
-                    Channel.ExchangeDeclare(
-                        exchange: Options.Exchange,
-                        type: Options.ExchangeType,
-                        durable: Options.Durable,
-                        autoDelete: Options.AutoDelete);
+                    _channel.ExchangeDeclare(
+                        exchange: _options.Exchange,
+                        type: _options.ExchangeType,
+                        durable: _options.Durable,
+                        autoDelete: _options.AutoDelete);
 
-                    Channel.QueueDeclare(
-                        queue: Options.Queue,
-                        durable: Options.Durable,
-                        exclusive: Options.Exclusive,
-                        autoDelete: Options.AutoDelete,
-                        arguments: Options.Arguments);
+                    _channel.QueueDeclare(
+                        queue: _options.Queue,
+                        durable: _options.Durable,
+                        exclusive: _options.Exclusive,
+                        autoDelete: _options.AutoDelete,
+                        arguments: _options.Arguments);
 
-                    Channel.QueueBind(
-                        queue: Options.Queue,
-                        exchange: Options.Exchange,
-                        routingKey: Options.RoutingKey);
+                    _channel.QueueBind(
+                        queue: _options.Queue,
+                        exchange: _options.Exchange,
+                        routingKey: _options.RoutingKey);
 
-                    Channel.BasicQos(0, 1, false);
+                    _channel.BasicQos(0, 1, false);
                 }
                 catch (Exception e)
                 {
@@ -71,11 +71,11 @@ namespace RabbiMQHelper
         {
             try
             {
-                Channel?.Dispose();
-                Channel = null;
+                _channel?.Dispose();
+                _channel = null;
 
-                Connection?.Dispose();
-                Connection = null;
+                _connection?.Dispose();
+                _connection = null;
             }
             catch (Exception ex)
             {

@@ -24,14 +24,17 @@ namespace RabbiMQHelper
         public RabbitMqSubscriber Subscribe(Action<ReadOnlyMemory<byte>> action) 
         {
             if (action == null)
-                throw new Exception("Null Action");
+                throw new Exception("Error: null Action");
+
+            if (_consumer != null)
+                throw new Exception("Error: already subscribed");
 
             _action = action;
-            _consumer = new EventingBasicConsumer(Channel);
-            Channel.BasicConsume(queue: Options.Queue,
-                                 autoAck: Options.AutoAck,
-                                 consumer: _consumer);
+            _consumer = new EventingBasicConsumer(_channel);
             _consumer.Received += Consumer_Received;
+            _channel.BasicConsume(queue: _options.Queue,
+                                  autoAck: _options.AutoAck,
+                                  consumer: _consumer);
             return this;
         }
 
@@ -42,9 +45,9 @@ namespace RabbiMQHelper
                 _action(ea.Body);
 
                 var props = ea.BasicProperties;
-                var replyProps = Channel.CreateBasicProperties();
+                var replyProps = _channel.CreateBasicProperties();
                 replyProps.CorrelationId = props.CorrelationId;
-                Channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
             }
             catch (Exception e) 
             {
