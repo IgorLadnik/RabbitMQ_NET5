@@ -71,7 +71,7 @@ namespace RabbitSample
                 RoutingKey = "test.message",
             };
 
-            using var sub1 = await RabbitMqSubscriber.Create(factory, options);
+            using var sub1 = await RabbitMqSubscriber.CreateAsync(factory, options);
             sub1.Subscribe(a =>
             {
                 string message;
@@ -96,11 +96,11 @@ namespace RabbitSample
             });
 
             options.Queue = "test_queue_2";
-            using var sub2 = await RabbitMqSubscriber.Create(factory, options);
+            using var sub2 = await RabbitMqSubscriber.CreateAsync(factory, options);
 
             sub2.Subscribe(a => Handler(a));
 
-            using var pub = await RabbitMqPublisher.Create(factory, options);
+            using var pub = await RabbitMqPublisher.CreateAsync(factory, options);
 
             var count = 0;
             pub.Publish(Encoding.UTF8.GetBytes($"Message {++count}"));
