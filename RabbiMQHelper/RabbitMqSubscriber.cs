@@ -8,7 +8,7 @@ namespace RabbiMQHelper
     public class RabbitMqSubscriber : RabbitMqBase
     {
         private EventingBasicConsumer _consumer;
-        private Action<ReadOnlyMemory<byte>> _action;
+        private Action<byte[], bool> _action;
 
         public static async Task<RabbitMqSubscriber> CreateAsync(ConnectionFactory factory, RabbitMqOptions options) => 
             (await new RabbitMqSubscriber(factory, options).Connect()) as RabbitMqSubscriber; 
@@ -18,7 +18,7 @@ namespace RabbiMQHelper
         {
         }
 
-        public RabbitMqSubscriber Subscribe(Action<ReadOnlyMemory<byte>> action) 
+        public RabbitMqSubscriber Subscribe(Action<byte[], bool> action) 
         {
             if (action == null)
                 throw new Exception("Error: null Action");
@@ -32,15 +32,12 @@ namespace RabbiMQHelper
                 {
                     try
                     {
-                        _action(ea.Body);
-
-                        var props = ea.BasicProperties;
-                        var replyProps = _channel.CreateBasicProperties();
-                        replyProps.CorrelationId = props.CorrelationId;
+                        _action(ea.Body.ToArray(), ea.Redelivered);
                         _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
                     }
                     catch (Exception e)
                     {
+                        _channel.BasicReject(deliveryTag: ea.DeliveryTag, requeue: true);
                     }
                 };
             _channel.BasicConsume(queue: _options.Queue,

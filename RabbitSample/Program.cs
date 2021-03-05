@@ -47,7 +47,7 @@ namespace RabbitSample
         {
             Customer customer = new()
             {
-                Name = "1st Customer",
+                Name = "The Customer",
                 Orders = new()
                 {
                     new() { Id = "order1" },
@@ -71,21 +71,20 @@ namespace RabbitSample
                 RoutingKey = "test.message",
             };
 
-            using var sub1 = (await RabbitMqSubscriber.CreateAsync(factory, options)).Subscribe(a =>
+            using var sub1 = (await RabbitMqSubscriber.CreateAsync(factory, options)).Subscribe((bytes, isRedelivered) =>
             {
                 string message;
                 Customer customer;
-                var data = a.ToArray();
-                if (data.Length < 20)
+                if (bytes.Length < 20)
                 {
-                    message = Encoding.UTF8.GetString(a.ToArray());
+                    message = Encoding.UTF8.GetString(bytes);
                     Console.WriteLine($"1 -> {message}");
                 }
                 else
                 {
                     try
                     {
-                        customer = Deserialize<Customer>(a.ToArray());
+                        customer = Deserialize<Customer>(bytes);
                         Console.WriteLine($"1 -> {customer.Name}");
                     }
                     catch (Exception e)
@@ -95,7 +94,7 @@ namespace RabbitSample
             });
 
             options.Queue = "test_queue_2";
-            using var sub2 = (await RabbitMqSubscriber.CreateAsync(factory, options)).Subscribe(a => Handler(a));
+            using var sub2 = (await RabbitMqSubscriber.CreateAsync(factory, options)).Subscribe((bytes, isRedelivered) => Handler(bytes, isRedelivered));
 
             using var pub = await RabbitMqPublisher.CreateAsync(factory, options);
 
@@ -106,21 +105,20 @@ namespace RabbitSample
             Console.ReadKey();
         }
 
-        static void Handler(ReadOnlyMemory<byte> a) 
+        static void Handler(byte[] bytes, bool isRedelivered) 
         {
             string message;
             Customer customer;
-            var data = a.ToArray();
-            if (data.Length < 20)
+            if (bytes.Length < 20)
             {
-                message = Encoding.UTF8.GetString(a.ToArray());
+                message = Encoding.UTF8.GetString(bytes);
                 Console.WriteLine($"2 -> {message}");
             }
             else
             {
                 try
                 {
-                    customer = Deserialize<Customer>(a.ToArray());
+                    customer = Deserialize<Customer>(bytes);
                     Console.WriteLine($"2 -> {customer.Name}");
                 }
                 catch (Exception e)
