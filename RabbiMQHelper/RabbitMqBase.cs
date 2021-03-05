@@ -1,23 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
 
 namespace RabbiMQHelper
 {
-    public class RabbitMqOptions 
-    {
-        public string Exchange { get; set; }
-        public string ExchangeType { get; set; } = "direct";
-        public string Queue { get; set; }
-        public string RoutingKey { get; set; }
-        public bool AutoAck { get; set; } = false;
-        public bool Durable { get; set; } = true;
-        public bool Exclusive { get; set; } = false;
-        public bool AutoDelete { get; set; } = false;
-        public IDictionary<string, object> Arguments { get; set; }
-    }
-
     public class RabbitMqBase : IDisposable
     {
         protected readonly RabbitMqOptions _options;
@@ -26,6 +13,8 @@ namespace RabbiMQHelper
         private readonly ConnectionFactory _factory;
         private IConnection _connection;
 
+        protected bool _isReconnect = false;
+        
         protected RabbitMqBase(ConnectionFactory factory, RabbitMqOptions options)
         {
             _factory = factory;
@@ -33,11 +22,13 @@ namespace RabbiMQHelper
         }
 
         protected Task<RabbitMqBase> Connect() =>
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 try
                 {
                     _connection = _factory.CreateConnection();
+                    _connection.ConnectionShutdown += async (sender, ea) => await Reconnect();
+
                     _channel = _connection.CreateModel();
 
                     _channel.ExchangeDeclare(
@@ -62,23 +53,67 @@ namespace RabbiMQHelper
                 }
                 catch (Exception e)
                 {
+                    await Reconnect();
                 }
 
                 return this;
             });
 
+        private async Task Reconnect()
+        {
+            if (_isReconnect) 
+                return;
+
+            _isReconnect = true;
+
+            Dispose();
+
+            var ev = new ManualResetEventSlim(false);
+
+            while (!ev.Wait(_factory.RequestedHeartbeat))
+            {
+                try
+                {
+                    await Connect();
+                    if (IsOK)
+                    {
+                        ev.Set();
+                        OnReconnect();
+                        _isReconnect = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    //Console.WriteLine("Reconnect failed!");
+                }
+            }
+        }
+
+        protected virtual void OnReconnect() { }
+
+        private bool IsOK => (bool)_channel?.IsOpen && (bool)_connection?.IsOpen;
+
         public void Dispose()
         {
             try
             {
-                _channel?.Dispose();
-                _channel = null;
+                if ((bool)_channel?.IsOpen)
+                {
+                    _channel?.Close();
+                    _channel = null;
+                }
 
-                _connection?.Dispose();
-                _connection = null;
+                if ((bool)_connection?.IsOpen)
+                {
+                    _connection?.Close();
+                    _connection = null;
+                }
             }
+
             catch (Exception ex)
             {
+                // Close() may throw an IOException if connection
+                // dies - but that's ok (handled by reconnect)
             }
         }
     }

@@ -23,7 +23,7 @@ namespace RabbiMQHelper
             if (action == null)
                 throw new Exception("Error: null Action");
 
-            if (_consumer != null)
+            if (!_isReconnect && _consumer != null)
                 throw new Exception("Error: already subscribed");
 
             _action = action;
@@ -45,6 +45,8 @@ namespace RabbiMQHelper
                                   consumer: _consumer);
             return this;
         }
+
+        protected override void OnReconnect() => Subscribe(_action);
     }
 }
 

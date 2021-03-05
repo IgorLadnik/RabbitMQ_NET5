@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbiMQHelper;
 using RabbitMQ.Client;
@@ -62,47 +63,59 @@ namespace RabbitSample
                 HostName = "localhost",
                 UserName = "guest",
                 Password = "guest",
+                RequestedHeartbeat = TimeSpan.FromSeconds(15),
             };
 
-            RabbitMqOptions options = new()
-            {
-                Exchange = "test_exchange",
-                Queue = "test_queue_1",
-                RoutingKey = "test.message",
-            };
+            const string exchange = "test_exchange";
+            const string queuePrefix = "test_queue_";
+            const string routingKey = "test.message";
 
-            using var sub1 = (await RabbitMqSubscriber.CreateAsync(factory, options)).Subscribe((bytes, isRedelivered) =>
-            {
-                string message;
-                Customer customer;
-                if (bytes.Length < 20)
+            using var sub1 = (await RabbitMqSubscriber.CreateAsync(factory, new() { Exchange = exchange, Queue = queuePrefix + "1", RoutingKey = routingKey }))
+                .Subscribe((bytes, isRedelivered) =>
                 {
-                    message = Encoding.UTF8.GetString(bytes);
-                    Console.WriteLine($"1 -> {message}");
-                }
-                else
+                    string message;
+                    Customer customer;
+                    if (bytes.Length < 20)
+                    {
+                        message = Encoding.UTF8.GetString(bytes);
+                        Console.WriteLine($"1 -> {message}");
+                    }
+                    else
+                    {
+                        try
+                        {
+                            customer = Deserialize<Customer>(bytes);
+                            Console.WriteLine($"1 -> {customer.Name}");
+                        }
+                        catch (Exception e)
+                        {
+                        }
+                    }
+                });
+
+            using var sub2 = (await RabbitMqSubscriber.CreateAsync(factory, new() { Exchange = exchange, Queue = queuePrefix + "2", RoutingKey = routingKey }))
+                .Subscribe((bytes, isRedelivered) => Handler(bytes, isRedelivered));
+
+            using var pub = await RabbitMqPublisher.CreateAsync(factory, new() { Exchange = exchange, RoutingKey = routingKey });
+
+            var count = 1;
+
+            while (true) 
+            {
+                try
                 {
-                    try
-                    {
-                        customer = Deserialize<Customer>(bytes);
-                        Console.WriteLine($"1 -> {customer.Name}");
-                    }
-                    catch (Exception e)
-                    {
-                    }
+                    pub.Publish(Encoding.UTF8.GetBytes($"Message {count}"));
+                    pub.Publish(Serialize(customer));
+                    count++;
                 }
-            });
+                catch (Exception e) 
+                {
+                }
 
-            options.Queue = "test_queue_2";
-            using var sub2 = (await RabbitMqSubscriber.CreateAsync(factory, options)).Subscribe((bytes, isRedelivered) => Handler(bytes, isRedelivered));
+                Thread.Sleep(5000);
+            }
 
-            using var pub = await RabbitMqPublisher.CreateAsync(factory, options);
-
-            var count = 0;
-            pub.Publish(Encoding.UTF8.GetBytes($"Message {++count}"));
-            pub.Publish(Serialize(customer));           
-
-            Console.ReadKey();
+            //Console.ReadKey();
         }
 
         static void Handler(byte[] bytes, bool isRedelivered) 

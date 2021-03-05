@@ -16,11 +16,14 @@ namespace RabbiMQHelper
 
         public void Publish(byte[] bytes) 
         {
+            if (_channel == null)
+                return;
+
             var properties = _channel.CreateBasicProperties();
             //properties.AppId = "AppId";
             //properties.ContentType = "application/json";
             properties.DeliveryMode = 1; // Doesn't persist to disk
-            properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            properties.Timestamp = new(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
             _channel.BasicPublish(exchange: _options.Exchange,
                                  routingKey: _options.RoutingKey,
