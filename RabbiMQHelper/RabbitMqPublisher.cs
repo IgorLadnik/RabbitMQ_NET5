@@ -1,11 +1,15 @@
 ﻿using System;
+using System.Threading.Tasks;
 using RabbitMQ.Client;
 
 namespace RabbiMQHelper
 {
     public class RabbitMqPublisher : RabbitMqBase
     {
-        public RabbitMqPublisher(ConnectionFactory factory, RabbitMqOptions options)
+        public static async Task<RabbitMqPublisher> Create(ConnectionFactory factory, RabbitMqOptions options) =>
+            (await new RabbitMqPublisher(factory, options).Connect()) as RabbitMqPublisher;
+
+        private RabbitMqPublisher(ConnectionFactory factory, RabbitMqOptions options)
             : base(factory, options)
         {
         }

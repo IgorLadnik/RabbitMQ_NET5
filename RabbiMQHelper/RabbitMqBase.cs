@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using RabbitMQ.Client;
 
 namespace RabbiMQHelper
@@ -23,32 +24,48 @@ namespace RabbiMQHelper
         protected IModel Channel { get; private set; }
         protected IConnection Connection { get; private set; }
 
-        public RabbitMqBase(ConnectionFactory factory, RabbitMqOptions options)
+        protected ConnectionFactory Factory { get; private set; }
+
+        protected RabbitMqBase(ConnectionFactory factory, RabbitMqOptions options)
         {
+            Factory = factory;
             Options = options;
-            Connection = factory.CreateConnection();
-            Channel = Connection.CreateModel();
-
-            Channel.ExchangeDeclare(
-                exchange: Options.Exchange, 
-                type: Options.ExchangeType,
-                durable: Options.Durable,
-                autoDelete: Options.AutoDelete);
-
-            Channel.QueueDeclare(
-                queue: Options.Queue, 
-                durable: Options.Durable,
-                exclusive: Options.Exclusive,
-                autoDelete: Options.AutoDelete,
-                arguments: Options.Arguments);
-
-            Channel.QueueBind(
-                queue: Options.Queue,
-                exchange: Options.Exchange,
-                routingKey: Options.RoutingKey);
-
-            Channel.BasicQos(0, 1, false);
         }
+
+        protected Task<RabbitMqBase> Connect() =>
+            Task.Run(() =>
+            {
+                try
+                {
+                    Connection = Factory.CreateConnection();
+                    Channel = Connection.CreateModel();
+
+                    Channel.ExchangeDeclare(
+                        exchange: Options.Exchange,
+                        type: Options.ExchangeType,
+                        durable: Options.Durable,
+                        autoDelete: Options.AutoDelete);
+
+                    Channel.QueueDeclare(
+                        queue: Options.Queue,
+                        durable: Options.Durable,
+                        exclusive: Options.Exclusive,
+                        autoDelete: Options.AutoDelete,
+                        arguments: Options.Arguments);
+
+                    Channel.QueueBind(
+                        queue: Options.Queue,
+                        exchange: Options.Exchange,
+                        routingKey: Options.RoutingKey);
+
+                    Channel.BasicQos(0, 1, false);
+                }
+                catch (Exception e)
+                {
+                }
+
+                return this;
+            });
 
         public void Dispose()
         {

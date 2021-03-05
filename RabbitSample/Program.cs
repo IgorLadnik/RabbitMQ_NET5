@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Threading.Tasks;
 using RabbiMQHelper;
 using RabbitMQ.Client;
 
@@ -42,7 +43,7 @@ namespace RabbitSample
             return (T)formatter.Deserialize(ms);
         }
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             Customer customer = new()
             {
@@ -70,7 +71,7 @@ namespace RabbitSample
                 RoutingKey = "test.message",
             };
 
-            using var sub1 = new RabbitMqSubscriber(factory, options);
+            using var sub1 = await RabbitMqSubscriber.Create(factory, options);
             sub1.Subscribe(a =>
             {
                 string message;
@@ -95,10 +96,11 @@ namespace RabbitSample
             });
 
             options.Queue = "test_queue_2";
-            using var sub2 = new RabbitMqSubscriber(factory, options);
+            using var sub2 = await RabbitMqSubscriber.Create(factory, options);
+
             sub2.Subscribe(a => Handler(a));
 
-            using var pub = new RabbitMqPublisher(factory, options);
+            using var pub = await RabbitMqPublisher.Create(factory, options);
 
             var count = 0;
             pub.Publish(Encoding.UTF8.GetBytes($"Message {++count}"));

@@ -13,7 +13,10 @@ namespace RabbiMQHelper
         private EventingBasicConsumer _consumer;
         private Action<ReadOnlyMemory<byte>> _action;
 
-        public RabbitMqSubscriber(ConnectionFactory factory, RabbitMqOptions options)
+        public static async Task<RabbitMqSubscriber> Create(ConnectionFactory factory, RabbitMqOptions options) => 
+            (await new RabbitMqSubscriber(factory, options).Connect()) as RabbitMqSubscriber; 
+
+        private RabbitMqSubscriber(ConnectionFactory factory, RabbitMqOptions options)
             : base(factory, options)
         {
         }
