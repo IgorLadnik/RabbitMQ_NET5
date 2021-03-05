@@ -27,9 +27,9 @@ namespace RabbiMQHelper
                 properties.Timestamp = new(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
                 _channel.BasicPublish(exchange: _options.Exchange,
-                                     routingKey: _options.RoutingKey,
-                                     basicProperties: properties,
-                                     body: bytes);
+                                      routingKey: _options.RoutingKey,
+                                      basicProperties: properties,
+                                      body: bytes);
                 return true;
             });
     }
