@@ -14,21 +14,23 @@ namespace RabbiMQHelper
         {
         }
 
-        public void Publish(byte[] bytes) 
-        {
-            if (_channel == null)
-                return;
+        public Task<bool> PublishAsync(byte[] bytes) =>
+            Task.Run(() =>
+            {
+                if (_channel == null)
+                    return false;
 
-            var properties = _channel.CreateBasicProperties();
-            //properties.AppId = "AppId";
-            //properties.ContentType = "application/json";
-            properties.DeliveryMode = 1; // Doesn't persist to disk
-            properties.Timestamp = new(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                var properties = _channel.CreateBasicProperties();
+                //properties.AppId = "AppId";
+                //properties.ContentType = "application/json";
+                properties.DeliveryMode = 1; // Doesn't persist to disk
+                properties.Timestamp = new(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
-            _channel.BasicPublish(exchange: _options.Exchange,
-                                 routingKey: _options.RoutingKey,
-                                 basicProperties: properties,
-                                 body: bytes);
-        }
+                _channel.BasicPublish(exchange: _options.Exchange,
+                                     routingKey: _options.RoutingKey,
+                                     basicProperties: properties,
+                                     body: bytes);
+                return true;
+            });
     }
 }

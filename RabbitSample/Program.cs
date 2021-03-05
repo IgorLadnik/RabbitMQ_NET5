@@ -76,21 +76,14 @@ namespace RabbitSample
                     string message;
                     Customer customer;
                     if (bytes.Length < 20)
-                    {
                         message = Encoding.UTF8.GetString(bytes);
-                        Console.WriteLine($"1 -> {message}");
-                    }
                     else
                     {
-                        try
-                        {
-                            customer = Deserialize<Customer>(bytes);
-                            Console.WriteLine($"1 -> {customer.Name}");
-                        }
-                        catch (Exception e)
-                        {
-                        }
+                        customer = Deserialize<Customer>(bytes);
+                        message = customer.Name;
                     }
+
+                    Console.WriteLine($"1 -> {message}");
                 });
 
             using var sub2 = (await RabbitMqSubscriber.CreateAsync(factory, new() { Exchange = exchange, Queue = queuePrefix + "2", RoutingKey = routingKey }))
@@ -99,14 +92,13 @@ namespace RabbitSample
             using var pub = await RabbitMqPublisher.CreateAsync(factory, new() { Exchange = exchange, RoutingKey = routingKey });
 
             var count = 1;
-
             while (true) 
             {
                 try
                 {
-                    pub.Publish(Encoding.UTF8.GetBytes($"Message {count}"));
-                    pub.Publish(Serialize(customer));
-                    count++;
+                    if (await pub.PublishAsync(Encoding.UTF8.GetBytes($"Message {count}")) &&
+                        await pub.PublishAsync(Serialize(customer)))
+                        count++;
                 }
                 catch (Exception e) 
                 {
@@ -123,21 +115,14 @@ namespace RabbitSample
             string message;
             Customer customer;
             if (bytes.Length < 20)
-            {
                 message = Encoding.UTF8.GetString(bytes);
-                Console.WriteLine($"2 -> {message}");
-            }
             else
             {
-                try
-                {
-                    customer = Deserialize<Customer>(bytes);
-                    Console.WriteLine($"2 -> {customer.Name}");
-                }
-                catch (Exception e)
-                {
-                }
+                customer = Deserialize<Customer>(bytes);
+                message = customer.Name;
             }
+
+            Console.WriteLine($"2 -> {message}");
         }
     }
 }
